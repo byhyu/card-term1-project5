@@ -12,6 +12,7 @@ import time
 from scipy.ndimage.measurements import label
 from sklearn.cross_validation import train_test_split
 from moviepy.editor import VideoFileClip
+from collections import deque
 
 # Read in images of cars and notcars
 def train_svm():
@@ -64,7 +65,7 @@ def train_svm():
     print('Feature vector length:', len(X_train[0]))
 
     # Use a linear SVC
-    svc = LinearSVC()
+    svc = LinearSVC(C=1.5)
     svc.fit(X_train, y_train)
     # Check the score of the SVC
     print('Test Accuracy of SVC = ', round(svc.score(X_test, y_test), 4))
@@ -82,6 +83,9 @@ def train_svm():
         pickle.dump(classifier_data, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 def process_test_images(test_images):
+
+
+
     def process_image(img):
         image = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
         boxes = []
@@ -137,6 +141,8 @@ def process_test_images(test_images):
     plt.show()
 
 def process_video(video_path):
+    history = deque(maxlen=8)
+
     def process_frame(img):
         image = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
         boxes = []
@@ -161,8 +167,14 @@ def process_video(video_path):
         heat = np.zeros_like(image[:, :, 0]).astype(np.float)
         heat = add_heat(heat, boxes)
 
+        history.append(heat)
+        mean_heat = np.mean(history,axis=0)
+        # fig = plt.figure(figsize=(10., 5))
+        # plt.imshow(mean_heat)
+
+
         # Apply threshold to help remove false positives
-        heat = apply_threshold(heat, 1)
+        heat = apply_threshold(mean_heat, 1)
 
         # Visualize the heatmap when displaying
         heatmap = np.clip(heat, 0, 255)
@@ -175,12 +187,11 @@ def process_video(video_path):
 
     clip = VideoFileClip(video_path)
     output_clip = clip.fl_image(process_frame)
-    output_clip.write_videofile('project_video_out.mp4',audio=False)
+    output_clip.write_videofile('output_c1_5.mp4',audio=False)
 
 if __name__ == '__main__':
+    ## train svm, reload paras
     # train_svm()
-    test_images = glob.glob('./test_images/*.jpg')
-
     dist_pickle = pickle.load(open("svc_data.pickle", "rb"))
     svc = dist_pickle["svc"]
     X_scaler = dist_pickle["scaler"]
@@ -190,8 +201,12 @@ if __name__ == '__main__':
     spatial_size = dist_pickle["spatial_size"]
     hist_bins = dist_pickle["hist_bins"]
 
-
+## test images
+    test_images = glob.glob('./test_images/*.jpg')
     # process_test_images(test_images)
+
+  ## video
+    # video_path =  "./test_video.mp4"#"./project_video.mp4"
     video_path = "./project_video.mp4"
     process_video(video_path)
 
