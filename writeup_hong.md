@@ -54,17 +54,7 @@ The trained results are saved/'pickled' to a `svc_data.pickle` file for easy ret
 To search for cars in larger images, sliding window search is utilized. The implementation can be found in line 102-168 of `helper.py`.
 Multiple searches were carried out using 1, 1.5, and 2.0 scales.
 
-Revison:
-The initial implementation yields
 
-    history = deque(maxlen=8)
-Here the idea is utilizing the fact that in the subsequent frames the cars are located at or near the same positions, while false positives are present only for 1-2 frames. There is no such optimization in the source code.
-
-The simplest way to implement this is using multi-frame accumulated heatmap: just store the heatmap of the last N frames (N can be 5 or 8) and do the same thresholding and labelling on the sum (or average) of these heatmaps.
-
-As a side effect this techniqe results much more stable bounding boxes as well.
-
-To store the heatmaps I suggest using collections.deque, in this way you do not need to delete the oldest heatmap:
 
 ### Filtering & Heat Maps
 
@@ -82,6 +72,21 @@ Below are some output images applying this method on the provided test images. O
 Here's a [link to my video result](./project_video_out.mp4). The code is located at line 139-178 in `vehicle_detection.py`.
 
 The procedure is similar to that of processing test images. Instead of output two images (`draw_img` where bounding boxes are drawn, and `heatmap`), only one image `draw_img` is returned. 
+
+#### Revison:
+The initial implementation yields unsatifying false postive rates. Changes were made to eliminate this. The idea is to utilize the fact that in the subsequent frames the cars are located at or near the same positions, while false positives are present only for 1-2 frames. To achieve this, multi-frame accumulated heatmap is used instead of single heatmap from current map. In the revised codes, the heatmap of the last N frames (N = 8 for example) and do the same thresholding and labelling on the average of these heatmap, as shown in the following code snippet:
+```python 
+history = deque(maxlen=8)
+#get current heat map 
+... 
+history.append(heat)
+heat = np.mean(histroy, axis=0)
+# then do labeling and thresholding as before
+```
+
+Also, the `C` parameter in the LinearSVC funtion is tuned in the set of {0.5,1.0,1.5}, it's settled as 1.5 in current implement since it yields better results. 
+
+Here is the new [video output](./output_c1_5.mp4)
 
 
 ### Discussion
